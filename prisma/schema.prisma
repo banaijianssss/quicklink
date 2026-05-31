@@ -87,3 +87,8 @@ model Click {
   @@index([linkId])
   @@index([createdAt])
 }
+
+model StripeEvent {
+  id        String   @id
+  createdAt DateTime @default(now())
+}

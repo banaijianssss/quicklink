@@ -1,12 +1,11 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt" },
+  trustHost: true,
+  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
   pages: {
     signIn: "/login",
   },
@@ -38,11 +37,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
+        token.planFetchedAt = Date.now();
       }
-      if (token.id) {
+      const shouldRefresh =
+        trigger === "update" ||
+        !token.planFetchedAt ||
+        Date.now() - (token.planFetchedAt as number) > 5 * 60 * 1000;
+
+      if (token.id && shouldRefresh) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
           select: { plan: true, email: true, name: true },
@@ -51,6 +56,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.plan = dbUser.plan;
           token.email = dbUser.email;
           token.name = dbUser.name;
+          token.planFetchedAt = Date.now();
         }
       }
       return token;

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { getPlanLimits } from "@/lib/plans";
 import { generateSlug, validateCustomSlug } from "@/lib/slug";
+import { Prisma } from "@prisma/client";
 
 export async function countUserLinks(userId: string) {
   return prisma.link.count({ where: { userId } });
@@ -44,7 +45,6 @@ export async function createLinkForUser(params: {
     return { error: "Link limit reached. Upgrade to Pro for more links." as const };
   }
 
-  let slug: string;
   if (params.customSlug) {
     const limits = getPlanLimits(params.plan);
     if (!limits.customSlug) {
@@ -52,41 +52,79 @@ export async function createLinkForUser(params: {
     }
     const slugError = validateCustomSlug(params.customSlug);
     if (slugError) return { error: slugError };
-    slug = params.customSlug;
-    const existing = await prisma.link.findUnique({ where: { slug } });
-    if (existing) return { error: "Slug already taken" as const };
-  } else {
-    let attempts = 0;
-    do {
-      slug = generateSlug();
-      const existing = await prisma.link.findUnique({ where: { slug } });
-      if (!existing) break;
-      attempts++;
-    } while (attempts < 10);
-    if (attempts >= 10) return { error: "Could not generate slug" as const };
+
+    try {
+      const link = await prisma.link.create({
+        data: {
+          userId: params.userId,
+          slug: params.customSlug,
+          destination,
+          title: params.title?.trim() || null,
+        },
+      });
+      return { link };
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+        return { error: "Slug already taken" as const };
+      }
+      throw e;
+    }
   }
 
-  const link = await prisma.link.create({
-    data: {
-      userId: params.userId,
-      slug,
-      destination,
-      title: params.title?.trim() || null,
-    },
-  });
+  for (let attempts = 0; attempts < 10; attempts++) {
+    const slug = generateSlug();
+    try {
+      const link = await prisma.link.create({
+        data: {
+          userId: params.userId,
+          slug,
+          destination,
+          title: params.title?.trim() || null,
+        },
+      });
+      return { link };
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+        continue;
+      }
+      throw e;
+    }
+  }
 
-  return { link };
+  return { error: "Could not generate slug" as const };
 }
 
-export async function recordClick(linkId: string, meta?: {
-  referrer?: string | null;
-  userAgent?: string | null;
-}) {
+export async function recordClick(
+  linkId: string,
+  meta?: {
+    referrer?: string | null;
+    userAgent?: string | null;
+    country?: string | null;
+  }
+) {
   await prisma.click.create({
     data: {
       linkId,
       referrer: meta?.referrer?.slice(0, 500) ?? null,
       userAgent: meta?.userAgent?.slice(0, 500) ?? null,
+      country: meta?.country?.slice(0, 2) ?? null,
     },
   });
+}
+
+export const LINKS_PAGE_SIZE = 20;
+
+export async function getUserLinksPage(userId: string, page: number) {
+  const skip = Math.max(0, (page - 1) * LINKS_PAGE_SIZE);
+  const [links, total] = await Promise.all([
+    prisma.link.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: LINKS_PAGE_SIZE,
+      include: { _count: { select: { clicks: true } } },
+    }),
+    prisma.link.count({ where: { userId } }),
+  ]);
+  return { links, total, totalPages: Math.ceil(total / LINKS_PAGE_SIZE) };
 }

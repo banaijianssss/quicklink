@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { Card } from "@/components/ui/card";
 import { UpgradeButton } from "@/components/upgrade-button";
@@ -5,6 +6,11 @@ import { PLANS } from "@/lib/plans";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "定价",
+  description: `QuickLink 定价：免费版 ${PLANS.free.maxLinks} 条链接，Pro 版 $${PLANS.pro.price}/月最多 ${PLANS.pro.maxLinks} 条链接。`,
+};
 
 export default async function PricingPage() {
   const session = await auth();

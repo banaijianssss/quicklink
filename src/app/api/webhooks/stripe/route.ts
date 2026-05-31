@@ -3,6 +3,27 @@ import { stripe, syncSubscriptionFromStripe } from "@/lib/stripe";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
+async function isEventProcessed(eventId: string) {
+  const existing = await prisma.stripeEvent.findUnique({ where: { id: eventId } });
+  return !!existing;
+}
+
+async function markEventProcessed(eventId: string) {
+  await prisma.stripeEvent.create({ data: { id: eventId } });
+}
+
+async function downgradeUserByCustomerId(customerId: string) {
+  await prisma.user.updateMany({
+    where: { stripeCustomerId: customerId },
+    data: {
+      plan: "free",
+      stripeSubscriptionId: null,
+      stripePriceId: null,
+      stripeCurrentPeriodEnd: null,
+    },
+  });
+}
+
 export async function POST(req: Request) {
   if (!stripe) {
     return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
@@ -23,39 +44,54 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session;
-      if (session.mode === "subscription" && session.subscription) {
-        const subId =
-          typeof session.subscription === "string"
-            ? session.subscription
-            : session.subscription.id;
-        const subscription = await stripe.subscriptions.retrieve(subId);
+  if (await isEventProcessed(event.id)) {
+    return NextResponse.json({ received: true, duplicate: true });
+  }
+
+  try {
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.mode === "subscription" && session.subscription) {
+          const subId =
+            typeof session.subscription === "string"
+              ? session.subscription
+              : session.subscription.id;
+          const subscription = await stripe.subscriptions.retrieve(subId);
+          await syncSubscriptionFromStripe(subscription);
+        }
+        break;
+      }
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
         await syncSubscriptionFromStripe(subscription);
+        if (event.type === "customer.subscription.deleted") {
+          const customerId =
+            typeof subscription.customer === "string"
+              ? subscription.customer
+              : subscription.customer.id;
+          await downgradeUserByCustomerId(customerId);
+        }
+        break;
       }
-      break;
-    }
-    case "customer.subscription.updated":
-    case "customer.subscription.deleted": {
-      const subscription = event.data.object as Stripe.Subscription;
-      await syncSubscriptionFromStripe(subscription);
-      if (event.type === "customer.subscription.deleted") {
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
         const customerId =
-          typeof subscription.customer === "string"
-            ? subscription.customer
-            : subscription.customer.id;
-        await prisma.user.updateMany({
-          where: { stripeCustomerId: customerId },
-          data: {
-            plan: "free",
-            stripeSubscriptionId: null,
-            stripePriceId: null,
-          },
-        });
+          typeof invoice.customer === "string"
+            ? invoice.customer
+            : invoice.customer?.id;
+        if (customerId) {
+          await downgradeUserByCustomerId(customerId);
+        }
+        break;
       }
-      break;
     }
+
+    await markEventProcessed(event.id);
+  } catch (error) {
+    console.error("Stripe webhook error:", event.type, error);
+    return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });

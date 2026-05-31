@@ -6,7 +6,7 @@ import { loginUser } from "@/actions/auth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-export function LoginForm() {
+export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
   const [state, formAction, pending] = useActionState(
     async (_prev: { error?: string } | null, formData: FormData) => {
       const result = await loginUser(formData);
@@ -18,6 +18,9 @@ export function LoginForm() {
   return (
     <>
       <form action={formAction} className="mt-6 space-y-4">
+        {callbackUrl && (
+          <input type="hidden" name="callbackUrl" value={callbackUrl} />
+        )}
         <div>
           <label className="mb-1 block text-sm font-medium">邮箱</label>
           <Input name="email" type="email" required autoComplete="email" disabled={pending} />

@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { Card } from "@/components/ui/card";
 import { UpgradeButton } from "@/components/upgrade-button";
@@ -6,8 +6,7 @@ import { ManageBillingButton } from "@/components/manage-billing-button";
 import { stripeConfigured } from "@/lib/stripe";
 
 export default async function SettingsPage() {
-  const session = await auth();
-  if (!session?.user?.id) return null;
+  const session = await requireSession();
 
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: session.user.id },

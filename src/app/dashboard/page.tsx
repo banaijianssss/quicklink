@@ -20,7 +20,7 @@ export default async function DashboardPage({
   const linkCount = await countUserLinks(session.user.id);
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
   const { links, total, totalPages } = await getUserLinksPage(session.user.id, page);
-  const overLimit = plan === "free" && linkCount > limits.maxLinks;
+  const overLimit = limits.maxLinks !== -1 && linkCount > limits.maxLinks;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
@@ -39,10 +39,15 @@ export default async function DashboardPage({
           <h1 className="text-2xl font-bold">仪表盘</h1>
           <p className="text-[var(--muted)]">
             计划：<span className="font-medium capitalize">{plan}</span> · 已用{" "}
-            {linkCount}/{limits.maxLinks} 条链接
+            {linkCount}/{limits.maxLinks === -1 ? "∞" : limits.maxLinks} 条链接
           </p>
         </div>
-        {plan !== "pro" && <UpgradeButton />}
+        {plan === "free" && (
+          <UpgradeButton label="升级 Starter — 7天免费试用" plan="starter" />
+        )}
+        {plan === "starter" && (
+          <UpgradeButton label="升级到 Pro" plan="pro" />
+        )}
       </div>
 
       <Card className="mt-8">

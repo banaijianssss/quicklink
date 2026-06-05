@@ -9,6 +9,7 @@ export async function countUserLinks(userId: string) {
 
 export async function canCreateLink(userId: string, plan: string) {
   const limits = getPlanLimits(plan);
+  if (limits.maxLinks === -1) return true;
   const count = await countUserLinks(userId);
   return count < limits.maxLinks;
 }
@@ -42,7 +43,7 @@ export async function createLinkForUser(params: {
 
   const canCreate = await canCreateLink(params.userId, params.plan);
   if (!canCreate) {
-    return { error: "Link limit reached. Upgrade to Pro for more links." as const };
+    return { error: "Link limit reached. Upgrade your plan for more links." as const };
   }
 
   if (params.customSlug) {

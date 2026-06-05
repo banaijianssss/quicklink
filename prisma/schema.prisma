@@ -15,6 +15,7 @@ model User {
   passwordHash  String?
   image         String?
   plan          String    @default("free")
+  apiKey        String?   @unique
   stripeCustomerId     String? @unique
   stripeSubscriptionId String? @unique
   stripePriceId        String?

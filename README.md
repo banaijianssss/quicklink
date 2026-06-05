@@ -8,8 +8,11 @@
 - 创建短链、302 跳转、点击追踪（异步记录，含地区/浏览器分析）
 - 二维码 PNG（`/api/qr/[slug]`，需链接所有权）
 - 仪表盘与分析页（Recharts）
-- **Free**：5 条链接、7 天分析、随机 slug
-- **Pro ($9/月)**：1000 条链接、90 天分析、自定义 slug（Stripe Checkout + Webhook）
+- **Free**：5 条链接、7 天分析、随机 slug、二维码带水印
+- **Starter ($4/月)**：50 条链接、30 天分析、自定义 slug、无水印二维码，7 天免费试用
+- **Pro ($9/月)**：1000 条链接、90 天分析、CSV 导出，7 天免费试用
+- **Business ($29/月)**：无限链接、365 天分析、REST API 访问（API Key），14 天免费试用
+- 年付最高节省 34%（需在 Stripe 创建对应 Price）
 
 ## 本地开发
 
@@ -31,8 +34,14 @@ npm run dev
 | `AUTH_URL` | 本地 `http://localhost:3000`；生产为站点 URL |
 | `DATABASE_URL` | Neon Postgres 连接串 |
 | `NEXT_PUBLIC_APP_URL` | 站点 URL |
-| `STRIPE_*` | [Stripe Dashboard](https://dashboard.stripe.com) 测试密钥 |
-| `STRIPE_PRO_PRICE_ID` | 创建 $9/月 recurring Price 后的 `price_...` |
+| `STRIPE_SECRET_KEY` | [Stripe Dashboard](https://dashboard.stripe.com) 测试密钥 |
+| `STRIPE_WEBHOOK_SECRET` | Stripe Webhook 签名 |
+| `STRIPE_STARTER_PRICE_ID` | Starter $4/月 Price ID（`price_...`） |
+| `STRIPE_STARTER_ANNUAL_PRICE_ID` | Starter $38/年 Price ID（可选） |
+| `STRIPE_PRO_PRICE_ID` | Pro $9/月 Price ID |
+| `STRIPE_PRO_ANNUAL_PRICE_ID` | Pro $79/年 Price ID（可选） |
+| `STRIPE_BUSINESS_PRICE_ID` | Business $29/月 Price ID（可选） |
+| `STRIPE_BUSINESS_ANNUAL_PRICE_ID` | Business $249/年 Price ID（可选） |
 
 ### Stripe Webhook（本地）
 
@@ -60,10 +69,21 @@ npm run build
 
 ## 盈利路径
 
-1. 上线落地页 + 定价页
-2. 配置 Stripe 真实 Price（$9/月）
-3. SEO / 产品 Hunt / 社群推广
-4. 按用量扩展：团队版、自定义域名、API 访问（roadmap）
+1. 在 Stripe 创建 4 个档位的 Price（月付 + 年付各一对）
+2. 填入对应 `STRIPE_*_PRICE_ID` 环境变量
+3. SEO / Product Hunt / 社群推广
+4. 上线后路线图：自定义域名（企业）、团队多账号、邮件周报
+
+## REST API（Business 档）
+
+Business 用户可在设置页生成 API Key，通过以下接口批量管理链接：
+
+```
+GET  /api/v1/links              # 列出所有链接（支持 ?page=&limit=）
+POST /api/v1/links              # 创建短链 { destination, title?, slug? }
+```
+
+请求头：`Authorization: Bearer ql_<your_api_key>`
 
 ## 技术栈
 

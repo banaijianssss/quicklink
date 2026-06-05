@@ -1,9 +1,11 @@
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { getLinkAnalytics } from "@/lib/analytics";
+import { getPlanLimits } from "@/lib/plans";
 import { buildShortUrl } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { AnalyticsChart } from "@/components/analytics-chart";
+import { CsvExportButton } from "@/components/csv-export-button";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -20,14 +22,20 @@ export default async function LinkAnalyticsPage({
   if (!link) notFound();
 
   const analytics = await getLinkAnalytics(link.id, session.user.plan);
+  const limits = getPlanLimits(session.user.plan);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
       <Link href="/dashboard" className="text-sm text-[var(--primary)] hover:underline">
         ← 返回仪表盘
       </Link>
-      <h1 className="mt-4 text-2xl font-bold">{link.title || link.slug}</h1>
-      <p className="text-[var(--muted)]">{buildShortUrl(link.slug)}</p>
+      <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">{link.title || link.slug}</h1>
+          <p className="text-[var(--muted)]">{buildShortUrl(link.slug)}</p>
+        </div>
+        <CsvExportButton linkId={link.id} canExport={limits.csvExport} />
+      </div>
 
       <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <Card>

@@ -4,7 +4,7 @@ import { getPlanLimits, isPro } from "./plans";
 describe("plans", () => {
   it("free limits", () => {
     const limits = getPlanLimits("free");
-    expect(limits.maxLinks).toBe(5);
+    expect(limits.maxLinks).toBe(10);
     expect(limits.customSlug).toBe(false);
   });
 

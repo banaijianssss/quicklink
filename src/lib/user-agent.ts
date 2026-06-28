@@ -8,4 +8,21 @@ function parseBrowser(ua: string | null): string {
   return "Other";
 }
 
-export { parseBrowser };
+function parseDevice(ua: string | null): "ios" | "android" | "desktop" {
+  if (!ua) return "desktop";
+  if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
+  if (/Android/i.test(ua)) return "android";
+  return "desktop";
+}
+
+function parseOs(ua: string | null): string {
+  if (!ua) return "Unknown";
+  if (/Windows NT/i.test(ua)) return "Windows";
+  if (/Mac OS X/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua)) return "macOS";
+  if (/iPhone|iPad|iPod/i.test(ua)) return "iOS";
+  if (/Android/i.test(ua)) return "Android";
+  if (/Linux/i.test(ua)) return "Linux";
+  return "Other";
+}
+
+export { parseBrowser, parseDevice, parseOs };

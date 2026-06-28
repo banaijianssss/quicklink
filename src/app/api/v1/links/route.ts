@@ -27,7 +27,7 @@ export async function GET(req: Request) {
   const user = await authenticateApiKey(req);
   if (!user) {
     return NextResponse.json(
-      { error: "Invalid or missing API key. Business plan required." },
+      { error: "Invalid or missing API key. Pro plan required." },
       { status: 401 }
     );
   }
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
   const user = await authenticateApiKey(req);
   if (!user) {
     return NextResponse.json(
-      { error: "Invalid or missing API key. Business plan required." },
+      { error: "Invalid or missing API key. Pro plan required." },
       { status: 401 }
     );
   }

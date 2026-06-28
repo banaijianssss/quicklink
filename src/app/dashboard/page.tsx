@@ -1,17 +1,23 @@
 import { requireSession } from "@/lib/session";
 import { countUserLinks, getUserLinksPage } from "@/lib/links";
 import { getPlanLimits } from "@/lib/plans";
+import { prisma } from "@/lib/db";
 import { Card } from "@/components/ui/card";
 import { CreateLinkForm } from "@/components/create-link-form";
 import { LinkRow } from "@/components/link-row";
 import { UpgradeButton } from "@/components/upgrade-button";
+import { LinkSearch } from "@/components/link-search";
+import { BulkImportForm } from "@/components/bulk-import-form";
+import { FoldersBar } from "@/components/folders-bar";
+import { listUserFolders } from "@/lib/folders";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Suspense } from "react";
 
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ upgraded?: string; page?: string }>;
+  searchParams: Promise<{ upgraded?: string; page?: string; q?: string; tag?: string; folder?: string }>;
 }) {
   const session = await requireSession();
   const params = await searchParams;
@@ -19,7 +25,23 @@ export default async function DashboardPage({
   const limits = getPlanLimits(plan);
   const linkCount = await countUserLinks(session.user.id);
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
-  const { links, total, totalPages } = await getUserLinksPage(session.user.id, page);
+  const [{ links, total, totalPages }, verifiedDomains, folders] = await Promise.all([
+    getUserLinksPage(session.user.id, page, {
+      q: params.q,
+      tag: params.tag,
+      folderId: params.folder,
+    }),
+    limits.customDomain
+      ? prisma.customDomain.findMany({
+          where: { userId: session.user.id, verified: true },
+          select: { id: true, hostname: true },
+          orderBy: { hostname: "asc" },
+        })
+      : Promise.resolve([]),
+    limits.linkFolders
+      ? listUserFolders(session.user.id)
+      : Promise.resolve([]),
+  ]);
   const overLimit = limits.maxLinks !== -1 && linkCount > limits.maxLinks;
 
   return (
@@ -50,21 +72,55 @@ export default async function DashboardPage({
         )}
       </div>
 
+      <div className="mt-6 flex flex-wrap gap-2">
+        <Link href="/dashboard/bio">
+          <Button variant="secondary">Link-in-bio 落地页</Button>
+        </Link>
+        {limits.deepAnalytics && (
+          <Link href="/dashboard/analytics">
+            <Button variant="secondary">账户分析</Button>
+          </Link>
+        )}
+      </div>
+
+      {limits.linkFolders && (
+        <div className="mt-6">
+          <Suspense fallback={null}>
+            <FoldersBar folders={folders} />
+          </Suspense>
+        </div>
+      )}
+
+      {limits.bulkImport && (
+        <div className="mt-6">
+          <BulkImportForm />
+        </div>
+      )}
+
       <Card className="mt-8">
         <h2 className="font-semibold">新建短链</h2>
         <div className="mt-4">
-          <CreateLinkForm plan={plan} />
+          <CreateLinkForm plan={plan} verifiedDomains={verifiedDomains} folders={folders} />
         </div>
       </Card>
 
       <section className="mt-10">
         <h2 className="mb-4 font-semibold">我的链接 ({total})</h2>
+        <Suspense fallback={null}>
+          <LinkSearch />
+        </Suspense>
         {links.length === 0 ? (
           <p className="text-sm text-[var(--muted)]">还没有链接，在上方创建第一条吧。</p>
         ) : (
           <div className="space-y-4">
             {links.map((link) => (
-              <LinkRow key={link.id} link={link} plan={plan} />
+              <LinkRow
+                key={link.id}
+                link={link}
+                plan={plan}
+                verifiedDomains={verifiedDomains}
+                folders={folders}
+              />
             ))}
           </div>
         )}

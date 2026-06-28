@@ -21,7 +21,9 @@ export default async function LinkAnalyticsPage({
   });
   if (!link) notFound();
 
-  const analytics = await getLinkAnalytics(link.id, session.user.plan);
+  const analytics = await getLinkAnalytics(link.id, session.user.plan, {
+    abVariants: link.abVariants,
+  });
   const limits = getPlanLimits(session.user.plan);
 
   return (
@@ -64,6 +66,34 @@ export default async function LinkAnalyticsPage({
         </div>
       </Card>
 
+      {analytics.deepAnalytics && analytics.hourlyData.length > 0 && (
+        <Card className="mt-6">
+          <h2 className="font-semibold">按小时分布</h2>
+          <ul className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+            {analytics.hourlyData.map((row) => (
+              <li key={row.hour} className="flex justify-between rounded border border-[var(--border)] px-2 py-1">
+                <span>{row.hour}</span>
+                <span className="font-medium">{row.clicks}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {analytics.deepAnalytics && analytics.abStats.length > 0 && (
+        <Card className="mt-6">
+          <h2 className="font-semibold">A/B 变体表现</h2>
+          <ul className="mt-4 space-y-2 text-sm">
+            {analytics.abStats.map((row) => (
+              <li key={`${row.variantIndex}-${row.label}`} className="flex justify-between gap-3">
+                <span>{row.label}</span>
+                <span className="font-medium">{row.count}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       <div className="mt-6 grid gap-6 md:grid-cols-3">
         <Card>
           <h2 className="font-semibold">来源 Top 5</h2>
@@ -95,6 +125,23 @@ export default async function LinkAnalyticsPage({
             )}
           </ul>
         </Card>
+        {analytics.deepAnalytics && (
+          <Card>
+            <h2 className="font-semibold">设备 Top 5</h2>
+            <ul className="mt-4 space-y-2 text-sm">
+              {analytics.topDevices.length === 0 ? (
+                <li className="text-[var(--muted)]">暂无数据</li>
+              ) : (
+                analytics.topDevices.map((d) => (
+                  <li key={d.name} className="flex justify-between gap-4">
+                    <span>{d.name}</span>
+                    <span className="font-medium">{d.count}</span>
+                  </li>
+                ))
+              )}
+            </ul>
+          </Card>
+        )}
         <Card>
           <h2 className="font-semibold">地区 Top 5</h2>
           <ul className="mt-4 space-y-2 text-sm">

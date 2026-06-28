@@ -16,7 +16,7 @@ export async function GET() {
 
   const limits = getPlanLimits(session.user.plan);
   if (!limits.apiAccess) {
-    return NextResponse.json({ error: "API access requires Business plan" }, { status: 403 });
+    return NextResponse.json({ error: "API access requires Pro plan" }, { status: 403 });
   }
 
   const user = await prisma.user.findUniqueOrThrow({
@@ -35,7 +35,7 @@ export async function POST() {
 
   const limits = getPlanLimits(session.user.plan);
   if (!limits.apiAccess) {
-    return NextResponse.json({ error: "API access requires Business plan" }, { status: 403 });
+    return NextResponse.json({ error: "API access requires Pro plan" }, { status: 403 });
   }
 
   const apiKey = generateApiKey();

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseBrowser } from "./user-agent";
+import { parseBrowser, parseOs, parseDevice } from "./user-agent";
 
 describe("parseBrowser", () => {
   it("detects Chrome", () => {
@@ -16,5 +16,21 @@ describe("parseBrowser", () => {
 
   it("handles null", () => {
     expect(parseBrowser(null)).toBe("Unknown");
+  });
+});
+
+describe("parseOs", () => {
+  it("detects iOS", () => {
+    expect(parseOs("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)")).toBe("iOS");
+  });
+
+  it("detects Windows", () => {
+    expect(parseOs("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")).toBe("Windows");
+  });
+});
+
+describe("parseDevice", () => {
+  it("detects android", () => {
+    expect(parseDevice("Mozilla/5.0 (Linux; Android 13)")).toBe("android");
   });
 });

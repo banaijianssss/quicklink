@@ -30,6 +30,7 @@ export async function GET(
 
   const shortUrl = buildShortUrl(slug);
   const limits = getPlanLimits(session.user.plan);
+  const darkColor = limits.qrCustomization && link.qrColor ? link.qrColor : "#000000";
 
   if (limits.qrWatermark) {
     // Free plan: return watermarked SVG
@@ -69,7 +70,7 @@ export async function GET(
     type: "png",
     width: 400,
     margin: 2,
-    color: { dark: "#000000", light: "#ffffff" },
+    color: { dark: darkColor, light: "#ffffff" },
   });
 
   return new NextResponse(new Uint8Array(png), {

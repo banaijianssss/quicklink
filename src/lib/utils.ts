@@ -9,6 +9,22 @@ export function getAppUrl() {
   return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 }
 
-export function buildShortUrl(slug: string) {
-  return `${getAppUrl()}/r/${slug}`;
+export function getAppHostname() {
+  try {
+    return new URL(getAppUrl()).hostname;
+  } catch {
+    return "localhost";
+  }
+}
+
+export function buildShortUrl(slug: string, customHost?: string) {
+  const host = customHost || getAppHostname();
+  const protocol = host.includes("localhost") ? "http" : "https";
+  return `${protocol}://${host}/r/${slug}`;
+}
+
+export function buildBioUrl(slug: string, customHost?: string) {
+  const host = customHost || getAppHostname();
+  const protocol = host.includes("localhost") ? "http" : "https";
+  return `${protocol}://${host}/p/${slug}`;
 }
